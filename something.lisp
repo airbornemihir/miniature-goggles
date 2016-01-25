@@ -1,8 +1,3 @@
-(defun rev (list1)
-  (if (endp list1) nil
-    (append (rev (cdr list1)) (cons (car list1) nil))
-    ))
-
 (defun extract-scheme-from-char-list (char-list backwards-scheme)
   (if (endp char-list) (mv char-list backwards-scheme t) ;; error!
     (if (equal (car char-list) #\:)
@@ -49,10 +44,10 @@
 			      (mv-let (h i)
 				      (extract-query-from-char-list f nil)
 				      (list
-				       (cons :scheme (coerce (rev b) 'STRING))
-				       (cons :host (coerce (rev e) 'STRING))
-				       (cons :path (coerce (rev g) 'STRING))
-				       (cons :query (coerce (rev i) 'STRING))
+				       (cons :scheme (coerce (reverse b) 'STRING))
+				       (cons :host (coerce (reverse e) 'STRING))
+				       (cons :path (coerce (reverse g) 'STRING))
+				       (cons :query (coerce (reverse i) 'STRING))
 				       (cons :fragment (coerce h 'STRING)))
 				      )
 			      ))
