@@ -33,6 +33,8 @@
       (extract-query-from-char-list (cdr char-list) (cons (car char-list) backwards-query))
       )))
 
+(defun legal-scheme-check () nil)
+
 (defun parse-url (url)
   (mv-let (a b c)
 	  (extract-scheme-from-char-list (coerce url 'LIST) nil)
