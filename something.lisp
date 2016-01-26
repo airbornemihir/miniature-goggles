@@ -1,11 +1,11 @@
 (defun extract-scheme-from-char-list (char-list backwards-scheme)
-  (if (endp char-list) (mv char-list backwards-scheme t) ;; error!
+  (if (endp char-list) (mv char-list (REVERSE backwards-scheme) t) ;; error!
     (if (equal (car char-list) #\:)
 	(if (or
 	     (or (endp (cdr char-list)) (not (equal (cadr char-list) #\/)))
 	     (or (endp (cddr char-list)) (not (equal (caddr char-list) #\/)))) ;; error!
-	    (mv char-list backwards-scheme t)
-	  (mv (cdddr char-list) backwards-scheme nil))
+	    (mv char-list (REVERSE backwards-scheme) t)
+	  (mv (cdddr char-list) (REVERSE backwards-scheme) nil))
       (extract-scheme-from-char-list
        (cdr char-list)
        (cons (car char-list) backwards-scheme))
@@ -13,27 +13,34 @@
     ))
 
 (defun extract-host-from-char-list (char-list backwards-host)
-  (if (endp char-list) (mv char-list backwards-host) ;; maybe we can prove that doing this gives an empty backwards-host
+  (if (endp char-list) (mv char-list (REVERSE backwards-host)) ;; maybe we can prove that doing this gives an empty backwards-host
     (if (equal (car char-list) #\/)
-	(mv (cdr char-list) backwards-host)
+	(mv (cdr char-list) (REVERSE backwards-host))
       (extract-host-from-char-list (cdr char-list) (cons (car char-list) backwards-host))
       )))
 
 (defun extract-path-from-char-list (char-list backwards-path)
-  (if (endp char-list) (mv char-list backwards-path) ;; maybe we can prove that doing this gives an empty backwards-path
+  (if (endp char-list) (mv char-list (REVERSE backwards-path)) ;; maybe we can prove that doing this gives an empty backwards-path
     (if (equal (car char-list) #\?)
-	(mv (cdr char-list) backwards-path)
+	(mv (cdr char-list) (REVERSE backwards-path))
       (extract-path-from-char-list (cdr char-list) (cons (car char-list) backwards-path))
       )))
 
 (defun extract-query-from-char-list (char-list backwards-query)
-  (if (endp char-list) (mv char-list backwards-query) ;; maybe we can prove that doing this gives an empty backwards-query
+  (if (endp char-list) (mv char-list (REVERSE backwards-query)) ;; maybe we can prove that doing this gives an empty backwards-query
     (if (equal (car char-list) #\#)
-	(mv (cdr char-list) backwards-query)
+	(mv (cdr char-list) (REVERSE backwards-query))
       (extract-query-from-char-list (cdr char-list) (cons (car char-list) backwards-query))
       )))
 
-(defun legal-scheme-check () nil)
+(defun legal-scheme-check (char-list)
+  (or (endp char-list) ;; base case
+      (and (characterp (car char-list)) ;; guard for Standard-char-p
+	   (Standard-char-p (car char-list)) ;; guard for Alpha-char-p
+	   (or (Alpha-char-p (car char-list)) ;; alphabet
+	       (member (car char-list) (list #\+ #\. #\-))) ;; period, dash or plus
+	   (legal-scheme-check (cdr char-list)))) ;; recurse
+  )
 
 (defun parse-url (url)
   (mv-let (a b c)
