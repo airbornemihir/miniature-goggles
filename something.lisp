@@ -5,7 +5,7 @@
 	     (or (endp (cdr char-list)) (not (equal (cadr char-list) #\/)))
 	     (or (endp (cddr char-list)) (not (equal (caddr char-list) #\/)))) ;; error!
 	    (mv char-list backwards-scheme t)
-	  (mv (cdddr char-list) backwards-scheme nil))
+	  (mv (cdddr char-list) (REVERSE backwards-scheme) nil))
       (extract-scheme-from-char-list
        (cdr char-list)
        (cons (car char-list) backwards-scheme))
