@@ -102,3 +102,8 @@
     ))
 
 (defun translate-url (url) (print-url (parse-url url)))
+
+(defthm idempotent-translation
+  (equal
+   (translate-url url)
+   (translate-url (translate-url url))))
