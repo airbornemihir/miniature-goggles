@@ -74,32 +74,60 @@
    (equal (caar (parse-url url)) :error)
    ))
 
+(defun url-scheme (urlstruct)
+  (cdr (assoc :scheme urlstruct))) ;; how do we catch errors?
+
+(defun url-host (urlstruct)
+  (cdr (assoc :host urlstruct)))
+
+(defun url-path (urlstruct)
+  (cdr (assoc :path urlstruct)))
+
+(defun url-query (urlstruct)
+  (cdr (assoc :query urlstruct)))
+
+(defun url-fragment (urlstruct)
+  (cdr (assoc :fragment urlstruct)))
+
+(defthm fields-are-all-there
+  (implies
+   (not (and
+	 (assoc :scheme (parse-url url))
+	 (assoc :host (parse-url url))
+	 (assoc :path (parse-url url))
+	 (assoc :query (parse-url url))
+	 (assoc :fragment (parse-url url))))
+   (assoc :error (parse-url url))
+   ))
+
 (defun print-url (urlstruct)
-  (if (and (equal (car (car urlstruct)) :scheme) (equal (car (car (cdr urlstruct))) :host))
-      (concatenate 'string
-	(cdr (car urlstruct))
-	"://"
-	(cdr (car (cdr urlstruct)))
-	(if (and (equal (car (car (cdr (cdr urlstruct)))) :path) (not (equal (cdr (car (cdr (cdr urlstruct)))) "")))
-	    (concatenate 'string
-			 "/"
-			 (cdr (car (cdr (cdr urlstruct))))
-			 (if (and (equal (car (car (cdr (cdr (cdr urlstruct))))) :query) (not (equal (cdr (car (cdr (cdr (cdr urlstruct))))) "")))
-			     (concatenate 'string
-					  "?"
-					  (cdr (car (cdr (cdr (cdr urlstruct)))))
-					  (if (and (equal (car (car (cdr (cdr (cdr (cdr urlstruct)))))) :fragment) (not (equal (cdr (car (cdr (cdr (cdr (cdr urlstruct)))))) "")))
-					      (concatenate 'string
-							   "#"
-							   (cdr (car (cdr (cdr (cdr (cdr urlstruct)))))))
-					    "" ;; when fragment is either out of whack or empty
-					    ))
-			   "" ;; when query is either out of whack or empty
-			   ))
-	  "" ;; when path is either out of whack or empty
-	  ))
-    nil ;; when scheme or host are out of whack
-    ))
+  (if (assoc :error urlstruct)
+      ""
+    (if (and (equal (car (car urlstruct)) :scheme) (equal (car (car (cdr urlstruct))) :host))
+	(concatenate 'string
+		     (url-scheme urlstruct)
+		     "://"
+		     (url-host urlstruct)
+		     (if (and (equal (car (car (cdr (cdr urlstruct)))) :path) (not (equal (cdr (car (cdr (cdr urlstruct)))) "")))
+			 (concatenate 'string
+				      "/"
+				      (url-path urlstruct)
+				      (if (and (equal (car (car (cdr (cdr (cdr urlstruct))))) :query) (not (equal (cdr (car (cdr (cdr (cdr urlstruct))))) "")))
+					  (concatenate 'string
+						       "?"
+						       (url-query urlstruct)
+						       (if (and (equal (car (car (cdr (cdr (cdr (cdr urlstruct)))))) :fragment) (not (equal (cdr (car (cdr (cdr (cdr (cdr urlstruct)))))) "")))
+							   (concatenate 'string
+									"#"
+									(url-fragment urlstruct))
+							 "" ;; when fragment is either out of whack or empty
+							 ))
+					"" ;; when query is either out of whack or empty
+					))
+		       "" ;; when path is either out of whack or empty
+		       ))
+      nil ;; when scheme or host are out of whack
+      )))
 
 (defun translate-url (url) (print-url (parse-url url)))
 
