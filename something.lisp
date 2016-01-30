@@ -43,28 +43,31 @@
   )
 
 (defun parse-url (url)
-  (mv-let (a b c)
-	  (extract-scheme-from-char-list (coerce url 'LIST) nil)
-	  (if (equal c nil)
-	      (if (legal-scheme-check b)
-		  (mv-let (d e)
-			  (extract-host-from-char-list a nil)
-			  (mv-let (f g)
-				  (extract-path-from-char-list d nil)
-				  (mv-let (h i)
-					  (extract-query-from-char-list f nil)
-					  (list
-					   (cons :scheme (coerce b 'STRING))
-					   (cons :host (coerce e 'STRING))
-					   (cons :path (coerce g 'STRING))
-					   (cons :query (coerce i 'STRING))
-					   (cons :fragment (coerce h 'STRING)))
-					  )
-				  ))
-		(list (cons :error "Illegal scheme.")))
-	    (list (cons :error c))
-	    )
-	  ))
+  (if (stringp url)
+      (mv-let (a b c)
+	      (extract-scheme-from-char-list (coerce url 'LIST) nil)
+	      (if (equal c nil)
+		  (if (legal-scheme-check b)
+		      (mv-let (d e)
+			      (extract-host-from-char-list a nil)
+			      (mv-let (f g)
+				      (extract-path-from-char-list d nil)
+				      (mv-let (h i)
+					      (extract-query-from-char-list f nil)
+					      (list
+					       (cons :scheme (coerce b 'STRING))
+					       (cons :host (coerce e 'STRING))
+					       (cons :path (coerce g 'STRING))
+					       (cons :query (coerce i 'STRING))
+					       (cons :fragment (coerce h 'STRING)))
+					      )
+				      ))
+		    (list (cons :error "Illegal scheme.")))
+		(list (cons :error c))
+		)
+	      )
+    (list (cons :error "Not a string."))
+    ))
 
 (defthm trouble-with-scheme
   (implies
@@ -102,7 +105,7 @@
 
 (defun print-url (urlstruct)
   (if (assoc :error urlstruct)
-      ""
+      "" ;; if :error is around, that means our struct isn't proper. 
     (if (and (equal (car (car urlstruct)) :scheme) (equal (car (car (cdr urlstruct))) :host))
 	(concatenate 'string
 		     (url-scheme urlstruct)
@@ -131,7 +134,14 @@
 
 (defun translate-url (url) (print-url (parse-url url)))
 
-(defthm idempotent-translation
+(in-theory (disable url-fragment url-query url-path url-host url-scheme))
+
+(defthm strict-url-translation-identity
   (equal
    (translate-url url)
-   (translate-url (translate-url url))))
+   url))
+
+(defthm idempotent-translation
+  (equal
+   (translate-url (translate-url url))
+   (translate-url url)))
