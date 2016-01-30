@@ -105,32 +105,30 @@
 
 (defun print-url (urlstruct)
   (if (assoc :error urlstruct)
-      "" ;; if :error is around, that means our struct isn't proper. 
-    (if (and (equal (car (car urlstruct)) :scheme) (equal (car (car (cdr urlstruct))) :host))
-	(concatenate 'string
-		     (url-scheme urlstruct)
-		     "://"
-		     (url-host urlstruct)
-		     (if (and (equal (car (car (cdr (cdr urlstruct)))) :path) (not (equal (cdr (car (cdr (cdr urlstruct)))) "")))
-			 (concatenate 'string
-				      "/"
-				      (url-path urlstruct)
-				      (if (and (equal (car (car (cdr (cdr (cdr urlstruct))))) :query) (not (equal (cdr (car (cdr (cdr (cdr urlstruct))))) "")))
-					  (concatenate 'string
-						       "?"
-						       (url-query urlstruct)
-						       (if (and (equal (car (car (cdr (cdr (cdr (cdr urlstruct)))))) :fragment) (not (equal (cdr (car (cdr (cdr (cdr (cdr urlstruct)))))) "")))
-							   (concatenate 'string
-									"#"
-									(url-fragment urlstruct))
-							 "" ;; when fragment is either out of whack or empty
-							 ))
-					"" ;; when query is either out of whack or empty
-					))
-		       "" ;; when path is either out of whack or empty
-		       ))
-      nil ;; when scheme or host are out of whack
-      )))
+      "" ;; if :error is around, that means our struct isn't proper, so we return an empty list. 
+    (concatenate 'string
+		 (url-scheme urlstruct)
+		 "://"
+		 (url-host urlstruct)
+		 (if (equal (url-path urlstruct) "")
+		     "" ;; when path is empty
+		   (concatenate 'string
+				"/"
+				(url-path urlstruct)
+				(if (equal (url-query urlstruct) "")
+				    "" ;; when query is empty
+				  (concatenate 'string
+					       "?"
+					       (url-query urlstruct)
+					       (if (equal (url-fragment urlstruct) "")
+						   "" ;; when fragment is empty
+						 (concatenate 'string
+							      "#"
+							      (url-fragment urlstruct))
+						 ))
+				  ))
+		   ))
+    ))
 
 (defun translate-url (url) (print-url (parse-url url)))
 
