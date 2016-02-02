@@ -55,11 +55,11 @@
 				      (mv-let (h i)
 					      (extract-query-from-char-list f nil)
 					      (list
-					       (cons :scheme (coerce b 'STRING))
-					       (cons :host (coerce e 'STRING))
-					       (cons :path (coerce g 'STRING))
-					       (cons :query (coerce i 'STRING))
-					       (cons :fragment (coerce h 'STRING)))
+					       (cons :scheme b)
+					       (cons :host e)
+					       (cons :path g)
+					       (cons :query i)
+					       (cons :fragment h))
 					      )
 				      ))
 		    (list (cons :error "Illegal scheme.")))
@@ -73,8 +73,8 @@
   (implies
    (mv-let (a b c) (extract-scheme-from-char-list (coerce url 'LIST) nil)
 	   (declare (ignore a))
-	   (or (not (equal c nil)) (not (legal-scheme-check b)) ))
-   (equal (caar (parse-url url)) :error)
+	   (or c (not (legal-scheme-check b)) ))
+   (assoc :error  (parse-url url))
    ))
 
 (defun url-scheme (urlstruct)
@@ -135,9 +135,11 @@
 (in-theory (disable url-fragment url-query url-path url-host url-scheme))
 
 (defthm strict-url-translation-identity
-  (equal
-   (translate-url url)
-   url))
+  (implies
+   (not (assoc :error (parse-url url)))
+   (equal
+    (translate-url url)
+    url)))
 
 (defthm idempotent-translation
   (equal
