@@ -1,4 +1,4 @@
-(defun extract-scheme-from-char-list (char-list backwards-scheme)
+(defund extract-scheme-from-char-list (char-list backwards-scheme)
   (if (endp char-list) (mv char-list (REVERSE backwards-scheme) "That's all? Your URL is just a scheme!") ;; error!
     (if (equal (car char-list) #\:)
 	(if (or
@@ -12,28 +12,28 @@
       )
     ))
 
-(defun extract-host-from-char-list (char-list backwards-host)
+(defund extract-host-from-char-list (char-list backwards-host)
   (if (endp char-list) (mv char-list (REVERSE backwards-host)) ;; maybe we can prove that doing this gives an empty backwards-host
     (if (equal (car char-list) #\/)
 	(mv (cdr char-list) (REVERSE backwards-host))
       (extract-host-from-char-list (cdr char-list) (cons (car char-list) backwards-host))
       )))
 
-(defun extract-path-from-char-list (char-list backwards-path)
+(defund extract-path-from-char-list (char-list backwards-path)
   (if (endp char-list) (mv char-list (REVERSE backwards-path)) ;; maybe we can prove that doing this gives an empty backwards-path
     (if (equal (car char-list) #\?)
 	(mv (cdr char-list) (REVERSE backwards-path))
       (extract-path-from-char-list (cdr char-list) (cons (car char-list) backwards-path))
       )))
 
-(defun extract-query-from-char-list (char-list backwards-query)
+(defund extract-query-from-char-list (char-list backwards-query)
   (if (endp char-list) (mv char-list (REVERSE backwards-query)) ;; maybe we can prove that doing this gives an empty backwards-query
     (if (equal (car char-list) #\#)
 	(mv (cdr char-list) (REVERSE backwards-query))
       (extract-query-from-char-list (cdr char-list) (cons (car char-list) backwards-query))
       )))
 
-(defun legal-scheme-check (char-list)
+(defund legal-scheme-check (char-list)
   (or (endp char-list) ;; base case
       (and (characterp (car char-list)) ;; guard for Standard-char-p
 	   (Standard-char-p (car char-list)) ;; guard for Alpha-char-p
@@ -42,7 +42,7 @@
 	   (legal-scheme-check (cdr char-list)))) ;; recurse
   )
 
-(defun parse-url (url)
+(defund parse-url (url)
   (if (stringp url)
       (mv-let (a b c)
 	      (extract-scheme-from-char-list (coerce url 'LIST) nil)
@@ -75,21 +75,22 @@
 	   (declare (ignore a))
 	   (or c (not (legal-scheme-check b)) ))
    (assoc :error  (parse-url url))
-   ))
+   )
+  :hints (("Goal" :in-theory (enable parse-url))))
 
-(defun url-scheme (urlstruct)
+(defund url-scheme (urlstruct)
   (cdr (assoc :scheme urlstruct))) ;; how do we catch errors?
 
-(defun url-host (urlstruct)
+(defund url-host (urlstruct)
   (cdr (assoc :host urlstruct)))
 
-(defun url-path (urlstruct)
+(defund url-path (urlstruct)
   (cdr (assoc :path urlstruct)))
 
-(defun url-query (urlstruct)
+(defund url-query (urlstruct)
   (cdr (assoc :query urlstruct)))
 
-(defun url-fragment (urlstruct)
+(defund url-fragment (urlstruct)
   (cdr (assoc :fragment urlstruct)))
 
 (defthm fields-are-all-there
@@ -101,45 +102,104 @@
 	 (assoc :query (parse-url url))
 	 (assoc :fragment (parse-url url))))
    (assoc :error (parse-url url))
-   ))
+   )
+  :hints (("Goal" :in-theory (enable parse-url))))
 
-(defun print-url (urlstruct)
-  (if (assoc :error urlstruct)
-      "" ;; if :error is around, that means our struct isn't proper, so we return an empty list. 
-    (concatenate 'string
-		 (url-scheme urlstruct)
-		 "://"
-		 (url-host urlstruct)
-		 (if (equal (url-path urlstruct) "")
-		     "" ;; when path is empty
-		   (concatenate 'string
-				"/"
-				(url-path urlstruct)
-				(if (equal (url-query urlstruct) "")
-				    "" ;; when query is empty
-				  (concatenate 'string
-					       "?"
-					       (url-query urlstruct)
-					       (if (equal (url-fragment urlstruct) "")
-						   "" ;; when fragment is empty
-						 (concatenate 'string
-							      "#"
-							      (url-fragment urlstruct))
-						 ))
-				  ))
-		   ))
-    ))
+(defund print-url (urlstruct)
+  (coerce 
+	  (if (assoc :error urlstruct)
+	      nil ;; if :error is around, that means our struct isn't proper, so we return an empty string. 
+	    (append
+	     (url-scheme urlstruct)
+	     (list #\: #\/ #\/)
+	     (url-host urlstruct)
+	     (if (not (url-path urlstruct))
+		 nil ;; when path is empty
+	       (append
+		(list #\/)
+		(url-path urlstruct)
+		(if (not (url-query urlstruct))
+		    nil ;; when query is empty
+		  (append
+		   (list #\?)
+		   (url-query urlstruct)
+		   (if (not (url-fragment urlstruct))
+		       nil ;; when fragment is empty
+		     (append
+		      (list #\#)
+		      (url-fragment urlstruct))
+		     ))
+		  ))
+	       ))
+	    )
+	  'string)
+  )
 
-(defun translate-url (url) (print-url (parse-url url)))
+(defund translate-url (url) (print-url (parse-url url)))
 
 (in-theory (disable url-fragment url-query url-path url-host url-scheme))
+
+(defthm empty-url-generates-error
+  (IMPLIES (EQUAL "" URL)
+	   (MV-NTH 2
+		   (EXTRACT-SCHEME-FROM-CHAR-LIST (COERCE URL 'LIST)
+						  NIL)) 
+	   ))
+
+(defun has-colon-slash-slash (x)
+  (cond ((and (equal (car x) #\:)
+	      (equal (cadr x) #\/)
+	      (equal (caddr x) #\/))
+	 t)
+	((equal (car x) #\:) nil)
+	(t (has-colon-slash-slash (cdr x)))))
+
+(defund has-properly-separated-scheme (char-list)
+  (if (endp char-list) nil ;; error!
+    (if (equal (car char-list) #\:)
+	(if (or
+	     (or (endp (cdr char-list)) (not (equal (cadr char-list) #\/)))
+	     (or (endp (cddr char-list)) (not (equal (caddr char-list) #\/)))) ;; error!
+	    nil
+	  t)
+      (has-properly-separated-scheme
+       (cdr char-list))
+      )
+    ))
+
+(defthm aerg
+  (implies (has-properly-separated-scheme char-list)
+	   (equal (MV-NTH 1 (EXTRACT-SCHEME-FROM-CHAR-LIST char-list (LIST x)))
+		  (cons x (MV-NTH 1 (EXTRACT-SCHEME-FROM-CHAR-LIST char-list nil)))))
+  :hints (("Goal" :in-theory (enable extract-scheme-from-char-list
+				     has-properly-separated-scheme))))
+
+(defthm append-extract-scheme
+  (implies (has-properly-separated-scheme char-list)
+	   (equal (APPEND
+		   (MV-NTH 1
+			   (EXTRACT-SCHEME-FROM-CHAR-LIST char-list NIL))
+		   '(#\: #\/ #\/)
+		   (mv-nth 0 (EXTRACT-SCHEME-FROM-CHAR-LIST char-list NIL)))
+		  char-list))
+  :hints (("Goal" :in-theory (enable has-properly-separated-scheme
+				     extract-scheme-from-char-list))))
 
 (defthm strict-url-translation-identity
   (implies
    (not (assoc :error (parse-url url)))
    (equal
     (translate-url url)
-    url)))
+    url))
+  :hints (("Goal" :in-theory (enable translate-url
+				     parse-url
+				     print-url
+				     url-scheme
+				     url-host
+				     url-path
+				     url-query)))
+  ;; :hints (("Subgoal 1'''" :use empty-url-generates-error))
+  )
 
 (defthm idempotent-translation
   (equal
