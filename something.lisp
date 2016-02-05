@@ -146,14 +146,6 @@
 						  NIL)) 
 	   ))
 
-(defun has-colon-slash-slash (x)
-  (cond ((and (equal (car x) #\:)
-	      (equal (cadr x) #\/)
-	      (equal (caddr x) #\/))
-	 t)
-	((equal (car x) #\:) nil)
-	(t (has-colon-slash-slash (cdr x)))))
-
 (defund has-properly-separated-scheme (char-list)
   (if (endp char-list) nil ;; error!
     (if (equal (car char-list) #\:)
