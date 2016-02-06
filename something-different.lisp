@@ -1,3 +1,5 @@
+(include-book "std/lists/top" :dir :system)
+
 (defund consume-separator (char-list separator)
   (if (endp separator)
       ;; this should not happen at the first call from
@@ -34,9 +36,13 @@
 		  ;; no error thrown by consume-separator
 		  (mv a (reverse backwards-field) b)))
       ;; induction case
-      (consume-through-separator (cdr char-list) separator (cons (car char-list) backwards-field)))))
+      (consume-through-separator
+       (cdr char-list)
+       separator
+       (cons (car char-list) backwards-field)))))
 
 (defund separate-char-list (char-list separator-list field-list)
+  (declare (xargs :measure (len separator-list)))
   ;;endp requires true-listp
   (if (endp separator-list)
       ;; no more separators!
@@ -50,4 +56,28 @@
 	  ;; the separator was not found
 	  (reverse (cons char-list field-list))
 	;; the separator was found, so let's recurse
-	(separate-char-list a (cdr separator-list) (cons b field-list))))))
+	(separate-char-list a
+			    (cdr separator-list)
+			    (cons b field-list))))))
+
+(defthm no-separator-one-field
+  (implies (not (consp separator-list))
+         (equal (len (separate-char-list char-list separator-list field-list))
+		(+ 1 (len field-list))))
+  :hints (("Goal" :in-theory (enable separate-char-list))))
+
+(defthm separators-between-fields
+  (<=
+   (len (separate-char-list char-list separator-list field-list))
+   (+ 1 (len field-list) (len separator-list)))
+  :hints (("Goal"
+	   :induct (and
+		    ;; (len field-list)
+		    (len separator-list)))
+	  ("Subgoal *1/1"
+	   :in-theory (enable separate-char-list))))
+
+(defund unseparate-char-list (separator-list field-list)
+  (if (endp field-list)
+      nil
+    nil))
