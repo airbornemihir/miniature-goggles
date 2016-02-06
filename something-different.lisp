@@ -62,22 +62,44 @@
 
 (defthm no-separator-one-field
   (implies (not (consp separator-list))
-         (equal (len (separate-char-list char-list separator-list field-list))
-		(+ 1 (len field-list))))
+	   (equal (len (separate-char-list char-list separator-list field-list))
+		  (+ 1 (len field-list))))
   :hints (("Goal" :in-theory (enable separate-char-list))))
+
+(in-theory (enable separate-char-list))
 
 (defthm separators-between-fields
   (<=
    (len (separate-char-list char-list separator-list field-list))
    (+ 1 (len field-list) (len separator-list)))
-  :hints (("Goal"
-	   :induct (and
-		    ;; (len field-list)
-		    (len separator-list)))
-	  ("Subgoal *1/1"
-	   :in-theory (enable separate-char-list))))
+  ;; :hints (("Goal"
+  ;; 	   :induct (and
+  ;; 		    ;; (len field-list)
+  ;; 		    (len separator-list)))
+  ;; 	  ("Subgoal *1/1"
+  ;; 	   :in-theory (enable separate-char-list)))
+  )
 
-(defund unseparate-char-list (separator-list field-list)
+(defun unseparate-char-list (separator-list field-list)
   (if (endp field-list)
+      ;;no more fields. this can happen even when there are yet
+      ;;separators.
       nil
-    nil))
+    (append
+     (car field-list)
+     (if (endp separator-list)
+	 nil
+       (append
+	(car separator-list)
+	(unseparate-char-list (cdr separator-list) (cdr field-list)))))))
+
+(defthm unseparate-separate
+  (implies (true-listp char-list)
+	   (equal
+	    (unseparate-char-list
+	     separators
+	     (separate-char-list
+	      char-list
+	      separators
+	      nil))
+	    char-list)))
