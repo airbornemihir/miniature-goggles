@@ -43,15 +43,6 @@
 
 (defthm list-fix-nil (iff (equal (list-fix x) nil) (atom x)))
 
-(defthm subgoal-1-2-prime-prime
-  (IMPLIES (AND (CONSP SEPARATORS)
-                (MV-NTH 2
-                        (CONSUME-THROUGH-SEPARATOR CHAR-LIST (CAR SEPARATORS)
-                                                   NIL))
-                (TRUE-LISTP CHAR-LIST))
-           (EQUAL (APPEND CHAR-LIST (LIST-FIX (CAR SEPARATORS)))
-                  CHAR-LIST)))
-
 (defund separate-char-list (char-list separator-list field-list)
   (declare (xargs :measure (len separator-list)))
   ;;endp requires true-listp
