@@ -61,12 +61,12 @@
 
 (in-theory (disable consume-through-separator))
 
-(defund separate-char-list (char-list separator-list field-list)
+(defund separate-char-list (char-list separator-list field-list separator-count)
   (declare (xargs :measure (len separator-list)))
   ;;endp requires true-listp
   (if (endp separator-list)
       ;; no more separators!
-      (reverse (cons char-list field-list))
+      (mv (reverse (cons char-list field-list)) separator-count)
     ;;still some separators
     (mv-let (a b c) (consume-through-separator char-list
 					       (car separator-list)
@@ -74,24 +74,34 @@
 	(declare)
       (if c
 	  ;; the separator was not found
-	  (reverse (cons char-list field-list))
+	  (mv (reverse (cons char-list field-list)) separator-count)
 	;; the separator was found, so let's recurse
 	(separate-char-list a
 			    (cdr separator-list)
-			    (cons b field-list))))))
+			    (cons b field-list)
+                            (+ 1 separator-count))))))
 
 (defthm no-separator-one-field
-  (implies (not (consp separator-list))
-	   (equal (len (separate-char-list char-list separator-list field-list))
-		  (+ 1 (len field-list))))
+  (implies (atom separator-list)
+           (mv-let (a b)
+             (separate-char-list char-list separator-list field-list separator-count)
+             (declare)
+             (and
+              (equal (len a) (+ 1 (len field-list)))
+              (equal b separator-count)
+              ))
+	   )
   :hints (("Goal" :in-theory (enable separate-char-list))))
 
 (in-theory (enable separate-char-list))
 
 (defthm separators-between-fields
-  (<=
-   (len (separate-char-list char-list separator-list field-list))
-   (+ 1 (len field-list) (len separator-list)))
+  (mv-let (a b) (separate-char-list char-list separator-list field-list separator-count)
+    (declare (ignore b))
+    (<=
+     (len a)
+     (+ 1 (len field-list) (len separator-list))))
+  
   ;; :hints (("Goal"
   ;; 	   :induct (and
   ;; 		    ;; (len field-list)
@@ -100,53 +110,50 @@
   ;; 	   :in-theory (enable separate-char-list)))
   )
 
-(defun unseparate-char-list (separator-list field-list)
+(defun unseparate-char-list (separator-list field-list separator-count)
   (if (endp field-list)
       ;;no more fields. this can happen even when there are yet
       ;;separators.
       nil
     (append
      (car field-list)
-     (if (endp separator-list)
+     (if (<= separator-count 0)
 	 nil
        (append
 	(car separator-list)
-	(unseparate-char-list (cdr separator-list) (cdr field-list)))))))
+	(unseparate-char-list
+         (cdr separator-list)
+         (cdr field-list)
+         (- separator-count 1)))))))
 
 (defun is-separator-list (separators)
     (cond
      ((consp separators) (character-listp (car separators)))
      (t (equal separators nil))))
 
-(thm
- (mv-let (a b c) (consume-through-separator char-list (car separators) nil)
-   (declare) 
-   (implies
-    (and
-     (consp separators)
-     (not c)
-     (not (true-listp a))
-     (true-listp char-list)
-     (character-listp (car separators)))
-    (equal
-     (unseparate-char-list
-      separators
-      (separate-char-list a (cdr separators) (list b)))
-     char-list))))
+;; (thm
+;;  (mv-let (a b c) (consume-through-separator char-list (car separators) nil)
+;;    (declare) 
+;;    (implies
+;;     (and
+;;      (consp separators)
+;;      (not c)
+;;      (not (true-listp a))
+;;      (true-listp char-list)
+;;      (character-listp (car separators)))
+;;     (equal
+;;      (unseparate-char-list
+;;       separators
+;;       (separate-char-list a (cdr separators) (list b)))
+;;      char-list))))
 
-;; thanks to cgen, i get it
-;; this theorem is messed up in the event that the first separator doesn't even
-;; appear in the list
 (defthm unseparate-separate
   (implies (and
             (true-listp char-list)
             (is-separator-list separators)
             )
-	   (equal
-	    (unseparate-char-list
-	     separators
-	     (separate-char-list
-	      char-list
-	      separators
-	      nil))
-	    char-list)))
+	   (mv-let (a b) (separate-char-list char-list separators nil 0)
+             (declare)
+             (equal (unseparate-char-list separators a b)
+                    char-list))
+           ))
