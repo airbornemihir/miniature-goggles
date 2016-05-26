@@ -1,4 +1,6 @@
 (include-book "std/lists/top" :dir :system)
+(include-book "acl2s/cgen/top" :dir :system :ttags :all)
+(acl2s-defaults :set testing-enabled t)
 
 (defund consume-separator (char-list separator)
   (if (endp separator)
@@ -42,6 +44,22 @@
        (cons (car char-list) backwards-field)))))
 
 (defthm list-fix-nil (iff (equal (list-fix x) nil) (atom x)))
+
+(in-theory (enable consume-through-separator))
+
+(defthm no-error-consuming-through-separator
+  (implies
+   (mv-let (a b c) (consume-through-separator char-list separator nil)
+     (declare (ignore a) (ignore b))
+     (not c))
+   ;; (and
+    (consp char-list)
+    ;; (mv-let (a b) (consume-separator char-list separator)
+    ;;   (declare (ignore a))
+    ;;   (not b)))
+    ))
+
+(in-theory (disable consume-through-separator))
 
 (defund separate-char-list (char-list separator-list field-list)
   (declare (xargs :measure (len separator-list)))
@@ -95,8 +113,35 @@
 	(car separator-list)
 	(unseparate-char-list (cdr separator-list) (cdr field-list)))))))
 
+(defun is-separator-list (separators)
+    (cond
+     ((consp separators) (character-listp (car separators)))
+     (t (equal separators nil))))
+
+(thm
+ (mv-let (a b c) (consume-through-separator char-list (car separators) nil)
+   (declare) 
+   (implies
+    (and
+     (consp separators)
+     (not c)
+     (not (true-listp a))
+     (true-listp char-list)
+     (character-listp (car separators)))
+    (equal
+     (unseparate-char-list
+      separators
+      (separate-char-list a (cdr separators) (list b)))
+     char-list))))
+
+;; thanks to cgen, i get it
+;; this theorem is messed up in the event that the first separator doesn't even
+;; appear in the list
 (defthm unseparate-separate
-  (implies (true-listp char-list)
+  (implies (and
+            (true-listp char-list)
+            (is-separator-list separators)
+            )
 	   (equal
 	    (unseparate-char-list
 	     separators
