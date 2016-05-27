@@ -2,7 +2,7 @@
 (include-book "acl2s/cgen/top" :dir :system :ttags :all)
 (acl2s-defaults :set testing-enabled nil)
 
-(defund consume-separator (char-list separator)
+(defun consume-separator (char-list separator)
   (if (endp separator)
       ;; this should not happen at the first call from
       ;; consume-until-separator - that function should always call
@@ -19,7 +19,7 @@
 
 ;; there's a difference between consuming the separator and finding
 ;; nothing afterwards, and not even finding the separator
-(defund consume-through-separator (char-list separator backwards-field)
+(defun consume-through-separator (char-list separator backwards-field)
   (if (endp char-list)
       ;;first base case
       ;;separator not found
@@ -55,9 +55,9 @@
     (consp char-list)
     ))
 
-(in-theory (disable consume-through-separator))
+;; (in-theory (disable consume-through-separator))
 
-(defund separate-char-list (char-list separator-list field-separator-list)
+(defun separate-char-list (char-list separator-list field-separator-list)
   (declare (xargs :measure (len separator-list)))
   ;;endp requires true-listp
   (if (endp separator-list)
@@ -87,12 +87,12 @@
      (car field-separator-list)
      (unseparate-char-list (cdr field-separator-list)))))
 
-(defun is-separator-list (separators)
+(defun character-list-listp (separators)
     (cond
      ((atom separators) (equal separators nil))
      (t (and
          (character-listp (car separators))
-         (is-separator-list (cdr separators))))))
+         (character-list-listp (cdr separators))))))
 
 (defthm consume-separator-gigo
   (implies (character-listp char-list)
@@ -110,10 +110,24 @@
              (character-listp a)))
   :hints (("Goal" :in-theory (enable consume-through-separator))))
 
+(defthm unseparate-separate-lemma
+  (implies (and
+            (character-listp char-list)
+            (character-list-listp separators)
+            (character-list-listp field-separator-list)
+            )
+	   (equal
+	    (unseparate-char-list (reverse (cons char-list field-separator-list)))
+	    (unseparate-char-list
+	     (separate-char-list
+              char-list
+              separators
+              field-separator-list)))))
+
 (defthm unseparate-separate
   (implies (and
             (character-listp char-list)
-            (is-separator-list separators)
+            (character-list-listp separators)
             )
 	   (equal
 	    (unseparate-char-list
