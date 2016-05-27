@@ -52,19 +52,8 @@
    (mv-let (a b c) (consume-through-separator char-list separator nil)
      (declare (ignore a) (ignore b))
      (not c))
-   ;; (and
     (consp char-list)
-    ;; (mv-let (a b) (consume-separator char-list separator)
-    ;;   (declare (ignore a))
-    ;;   (not b)))
     ))
-
-;; (thm
-;;  (implies
-;;   (true-listp char-list)
-;;   (mv-let (a b c) (consume-through-separator char-list (car separators) nil)
-;;     (declare (ignore b) (ignore c)) (true-listp a))
-;;   ))
 
 (in-theory (disable consume-through-separator))
 
@@ -87,25 +76,7 @@
 			    (cdr separator-list)
 			    (cons (car separator-list) (cons b field-separator-list)))))))
 
-;; (defthm no-separator-one-field
-;;   (implies (not (consp separator-list))
-;; 	   (equal (len (separate-char-list char-list separator-list field-list))
-;; 		  (+ 1 (len field-list))))
-;;   :hints (("Goal" :in-theory (enable separate-char-list))))
-
 (in-theory (enable separate-char-list))
-
-;; (defthm separators-between-fields
-;;   (<=
-;;    (len (separate-char-list char-list separator-list field-list))
-;;    (+ 1 (len field-list) (len separator-list)))
-;;   ;; :hints (("Goal"
-;;   ;; 	   :induct (and
-;;   ;; 		    ;; (len field-list)
-;;   ;; 		    (len separator-list)))
-;;   ;; 	  ("Subgoal *1/1"
-;;   ;; 	   :in-theory (enable separate-char-list)))
-;;   )
 
 (defun unseparate-char-list (field-separator-list)
   (if (endp field-separator-list)
@@ -122,22 +93,6 @@
      (t (and
          (character-listp (car separators))
          (is-separator-list (cdr separators))))))
-
-;; (thm
-;;  (mv-let (a b c) (consume-through-separator char-list (car separators) nil)
-;;    (declare) 
-;;    (implies
-;;     (and
-;;      (consp separators)
-;;      (not c)
-;;      (not (true-listp a))
-;;      (true-listp char-list)
-;;      (character-listp (car separators)))
-;;     (equal
-;;      (unseparate-char-list
-;;       separators
-;;       (separate-char-list a (cdr separators) (list b)))
-;;      char-list))))
 
 (defthm consume-separator-gigo
   (implies (character-listp char-list)
