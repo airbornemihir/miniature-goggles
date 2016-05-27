@@ -110,7 +110,10 @@
              (character-listp a)))
   :hints (("Goal" :in-theory (enable consume-through-separator))))
 
-(defthm unseparate-separate-lemma
+#||
+(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
+      (separators (list (coerce "://" 'LIST) (coerce "/" 'LIST)))
+      (field-separator-list nil))
   (implies (and
             (character-listp char-list)
             (character-list-listp separators)
@@ -123,6 +126,59 @@
               char-list
               separators
               field-separator-list)))))
+||#
+
+(defthm unseparate-char-list-append
+  (equal (unseparate-char-list (append x y))
+         (append (unseparate-char-list x)
+                 (unseparate-char-list y))))
+
+; To eliminate this skip-proofs, I'm pretty sure you'll need to replace the
+; final argument of nil in consume-through-separator by backwards-field.
+(skip-proofs
+ (defthm unseparate-separate-lemma-lemma
+   (implies
+    (and (not (mv-nth 2
+                      (consume-through-separator char-list separator nil)))
+         (character-listp char-list)
+         (character-listp separator))
+    (equal
+     (append
+      (mv-nth 1
+              (consume-through-separator char-list separator nil))
+      (car separators)
+      (mv-nth 0
+              (consume-through-separator char-list separator nil)))
+     char-list))))
+
+(defthm character-listp-rev
+  (implies (character-listp x)
+           (character-listp (rev x))))
+
+(defthm character-listp-mv-nth-1-consume-through-separator
+  (implies (and (not (mv-nth 2
+                             (consume-through-separator char-list separator
+                                                        backwards-field)))
+                (character-listp char-list)
+                (character-listp separator)
+                (character-listp backwards-field))
+           (character-listp
+            (mv-nth 1
+                    (consume-through-separator char-list separator backwards-field)))))
+
+(defthm unseparate-separate-lemma
+  (implies (and
+            (character-listp char-list)
+            (character-list-listp separators)
+            (character-list-listp field-separator-list)
+            )
+	   (equal
+	    (unseparate-char-list
+	     (separate-char-list
+              char-list
+              separators
+              field-separator-list))
+	    (unseparate-char-list (reverse (cons char-list field-separator-list))))))
 
 (defthm unseparate-separate
   (implies (and
