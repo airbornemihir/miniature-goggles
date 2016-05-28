@@ -133,23 +133,45 @@
          (append (unseparate-char-list x)
                  (unseparate-char-list y))))
 
+(defthm actually-consumes-separator
+  (mv-let (a b) (consume-separator char-list separator) (declare)
+    (implies
+     (not b)
+     (equal
+      (append separator a)
+      char-list))))
+
+(defthm unseparate-separate-lemma-lemma-lemma
+ (implies
+  (and (not (mv-nth 2
+                    (consume-through-separator char-list separator backwards-field)))
+       (character-listp char-list)
+       (character-listp separator))
+  (equal
+   (append
+    (mv-nth 1
+            (consume-through-separator char-list separator backwards-field))
+    separator
+    (mv-nth 0
+            (consume-through-separator char-list separator backwards-field)))
+   (append (rev backwards-field) char-list))))
+
 ; To eliminate this skip-proofs, I'm pretty sure you'll need to replace the
 ; final argument of nil in consume-through-separator by backwards-field.
-(skip-proofs
- (defthm unseparate-separate-lemma-lemma
-   (implies
-    (and (not (mv-nth 2
-                      (consume-through-separator char-list separator nil)))
-         (character-listp char-list)
-         (character-listp separator))
-    (equal
-     (append
-      (mv-nth 1
-              (consume-through-separator char-list separator nil))
-      (car separators)
-      (mv-nth 0
-              (consume-through-separator char-list separator nil)))
-     char-list))))
+(defthm unseparate-separate-lemma-lemma
+  (implies
+   (and (not (mv-nth 2
+                     (consume-through-separator char-list separator nil)))
+        (character-listp char-list)
+        (character-listp separator))
+   (equal
+    (append
+     (mv-nth 1
+             (consume-through-separator char-list separator nil))
+     separator
+     (mv-nth 0
+             (consume-through-separator char-list separator nil)))
+    char-list)))
 
 (defthm character-listp-rev
   (implies (character-listp x)
@@ -192,3 +214,4 @@
 	      separators
 	      nil))
 	    char-list)))
+
