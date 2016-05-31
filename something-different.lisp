@@ -1,3 +1,48 @@
+(in-package "ACL2")
+
+#||
+The publicly-exposed functions for this book are separate-char-list and||#
+#|unseparate-char-list. They serve to parse URLs based on a list of separators||#
+#|provided as an argument and pretty-print a parsed URL, respectively. They are||#
+#|inverses of each other, as shown by the theorem unseparate-separate.
+Here are some examples that may prove instructive.
+
+Parsing a URL:
+ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
+      (separators (list (coerce "://" 'LIST) (coerce "/" 'LIST)))
+      (field-separator-list nil)) (separate-char-list
+              char-list
+              separators
+              field-separator-list))
+((#\h #\t #\t #\p)
+ (#\: #\/ #\/)
+ (#\w #\w #\w #\.
+      #\u #\t #\e #\x #\a #\s #\. #\e #\d #\u)
+ (#\/)
+ (#\g #\r #\a #\d #\e #\s))
+
+Pretty-printing a parsed URL:
+ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
+      (separators (list (coerce "://" 'LIST) (coerce "/" 'LIST)))
+      (field-separator-list nil)) (unseparate-char-list (separate-char-list
+              char-list
+              separators
+              field-separator-list)))
+(#\h #\t #\t #\p #\: #\/ #\/ #\w
+     #\w #\w #\. #\u #\t #\e #\x #\a #\s #\.
+     #\e #\d #\u #\/ #\g #\r #\a #\d #\e #\s)
+
+Coercing the pretty-printed URL back to a string:
+ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
+      (separators (list (coerce "://" 'LIST) (coerce "/" 'LIST)))
+      (field-separator-list nil)) (coerce (unseparate-char-list (separate-char-list
+              char-list
+              separators
+              field-separator-list)) 'STRING))
+"http://www.utexas.edu/grades"
+
+||#
+
 (include-book "std/lists/top" :dir :system)
 
 (defun consume-separator (char-list separator)
