@@ -1,6 +1,4 @@
 (include-book "std/lists/top" :dir :system)
-(include-book "acl2s/cgen/top" :dir :system :ttags :all)
-(acl2s-defaults :set testing-enabled nil)
 
 (defun consume-separator (char-list separator)
   (if (endp separator)
