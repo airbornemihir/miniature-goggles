@@ -2,7 +2,7 @@
 
 #||
 The publicly-exposed functions for this book are separate-char-list and||#
-#|unseparate-char-list. They serve to parse URLs based on a list of separators||#
+#|unseparate-char-list-list. They serve to parse URLs based on a list of separators||#
 #|provided as an argument and pretty-print a parsed URL, respectively. They are||#
 #|inverses of each other, as shown by the theorem unseparate-separate.
 Here are some examples that may prove instructive.
@@ -24,7 +24,7 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
 Pretty-printing a parsed URL:
 ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
       (separators (list (coerce "://" 'LIST) (coerce "/" 'LIST)))
-      (field-separator-list nil)) (unseparate-char-list (separate-char-list
+      (field-separator-list nil)) (unseparate-char-list-list (separate-char-list
               char-list
               separators
               field-separator-list)))
@@ -35,7 +35,7 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
 Coercing the pretty-printed URL back to a string:
 ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
       (separators (list (coerce "://" 'LIST) (coerce "/" 'LIST)))
-      (field-separator-list nil)) (coerce (unseparate-char-list (separate-char-list
+      (field-separator-list nil)) (coerce (unseparate-char-list-list (separate-char-list
               char-list
               separators
               field-separator-list)) 'STRING))
@@ -121,14 +121,14 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
 
 (in-theory (enable separate-char-list))
 
-(defun unseparate-char-list (field-separator-list)
+(defun unseparate-char-list-list (field-separator-list)
   (if (endp field-separator-list)
       ;;no more fields. this can happen even when there are yet
       ;;separators.
       nil
     (append
      (car field-separator-list)
-     (unseparate-char-list (cdr field-separator-list)))))
+     (unseparate-char-list-list (cdr field-separator-list)))))
 
 (defun character-list-listp (separators)
     (cond
@@ -163,18 +163,18 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
             (character-list-listp field-separator-list)
             )
 	   (equal
-	    (unseparate-char-list (reverse (cons char-list field-separator-list)))
-	    (unseparate-char-list
+	    (unseparate-char-list-list (reverse (cons char-list field-separator-list)))
+	    (unseparate-char-list-list
 	     (separate-char-list
               char-list
               separators
               field-separator-list)))))
 ||#
 
-(defthm unseparate-char-list-append
-  (equal (unseparate-char-list (append x y))
-         (append (unseparate-char-list x)
-                 (unseparate-char-list y))))
+(defthm unseparate-char-list-list-append
+  (equal (unseparate-char-list-list (append x y))
+         (append (unseparate-char-list-list x)
+                 (unseparate-char-list-list y))))
 
 (defthm actually-consumes-separator
   (mv-let (a b) (consume-separator char-list separator) (declare)
@@ -238,12 +238,12 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
             (character-list-listp field-separator-list)
             )
 	   (equal
-	    (unseparate-char-list
+	    (unseparate-char-list-list
 	     (separate-char-list
               char-list
               separators
               field-separator-list))
-	    (unseparate-char-list (reverse (cons char-list field-separator-list))))))
+	    (unseparate-char-list-list (reverse (cons char-list field-separator-list))))))
 
 (defthm unseparate-separate
   (implies (and
@@ -251,7 +251,7 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
             (character-list-listp separators)
             )
 	   (equal
-	    (unseparate-char-list
+	    (unseparate-char-list-list
 	     (separate-char-list
 	      char-list
 	      separators
