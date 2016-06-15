@@ -261,3 +261,37 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
 	      nil))
 	    char-list)))
 
+(defun get-separators-from-scheme (scheme)
+  (if (endp scheme)
+      nil
+    (cons (coerce (cdr (car scheme)) 'list) (get-separators-from-scheme (cdr scheme)))))
+
+#||
+(get-separators-from-scheme (list
+                             (cons :scheme "://")
+                             (cons :host "/")
+                             (cons :path "?")
+                             (cons :query "#")))
+||#
+
+(defun force-field-separator-list-into-scheme (scheme field-separator-list)
+  (if (endp scheme)
+      nil
+    (let
+        ((car-field-separator-list
+          (if (endp field-separator-list) nil (car field-separator-list)))
+         (cddr-field-separator-list
+          (if (or (endp field-separator-list) (endp (cdr field-separator-list)))
+              nil
+            (cddr field-separator-list))))
+      (cons (cons (car (car scheme)) car-field-separator-list)
+            (force-field-separator-list-into-scheme
+             (cdr scheme)
+             cddr-field-separator-list
+             )))
+    ))
+
+(defun parse-url-by-scheme (scheme url)
+  (force-field-separator-list-into-scheme
+   scheme
+   (separate-char-list (coerce url 'list) (get-separators-from-scheme scheme) nil)))
