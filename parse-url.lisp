@@ -1,27 +1,40 @@
 (in-package "ACL2")
 
 #||
-Update: there is now a new publicly-exposed function, called
-parse-url-by-scheme. Here are two example invocations:
+Update: there is are two more publicly-exposed functions, called
+is-valid-http-url and is-valid-ftp-url. See example calls below.
 
-ACL2 !>(parse-url-by-scheme  (list
-                             (cons :scheme "://")
-                             (cons :host "/")
-                             (cons :path "?")
-                             (cons :query "#")
-                             (cons :fragment "")) "http://www.utexas.edu/grades?curve=no#ok")
-((:SCHEME #\h #\t #\t #\p)
- (:HOST #\w #\w #\w #\.
-        #\u #\t #\e #\x #\a #\s #\. #\e #\d #\u)
- (:PATH #\g #\r #\a #\d #\e #\s)
- (:QUERY #\c #\u #\r #\v #\e #\= #\n #\o)
- (:FRAGMENT #\o #\k))
-ACL2 !>(parse-url-by-scheme  (list
-                             (cons :scheme "://")
-                             (cons :host "/")
-                             (cons :path "?")
-                             (cons :query "#")
-                             (cons :fragment "")) "http://www.utexas.edu/grades")
+ACL2 !>(is-valid-http-url "http://www.utexas.edu/grades?curve=no#ok")
+T
+ACL2 !>(is-valid-http-url "https://www.utexas.edu/grades?curve=no#ok")
+T
+ACL2 !>(is-valid-http-url "ftp://www.utexas.edu/grades?curve=no#ok")
+NIL
+ACL2 !>(is-valid-http-url "http:/")
+NIL
+||#
+
+#||
+Update: there is now a new publicly-exposed function, called
+parse-url-by-template. Here are two example invocations:
+
+ACL2 !>(parse-url-by-template  (list
+                                (cons :scheme "://")
+                                (cons :host "/")
+                                (cons :path "?")
+                                (cons :query "#")
+                                (cons :fragment "")) "http://www.utexas.edu/grades?curve=no#ok")
+((:SCHEME . "http")
+ (:HOST . "www.utexas.edu")
+ (:PATH . "grades")
+ (:QUERY . "curve=no")
+ (:FRAGMENT . "ok"))
+ACL2 !>(parse-url-by-template  (list
+                                (cons :scheme "://")
+                                (cons :host "/")
+                                (cons :path "?")
+                                (cons :query "#")
+                                (cons :fragment "")) "http://www.utexas.edu/grades")
 ((:SCHEME . "http")
  (:HOST . "www.utexas.edu")
  (:PATH . "grades")
@@ -290,22 +303,22 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
 	      nil))
 	    char-list)))
 
-(defun get-separators-from-scheme (scheme)
-  (if (or (endp scheme) (endp (cdr scheme)))
+(defun get-separators-from-template (template)
+  (if (or (endp template) (endp (cdr template)))
       nil
-    (cons (coerce (cdr (car scheme)) 'list) (get-separators-from-scheme (cdr scheme)))))
+    (cons (coerce (cdr (car template)) 'list) (get-separators-from-template (cdr template)))))
 
 #||
-(get-separators-from-scheme (list
-                             (cons :scheme "://")
+(get-separators-from-template (list
+                             (cons :template "://")
                              (cons :host "/")
                              (cons :path "?")
                              (cons :query "#")
                              (cons :fragment "")))
 ||#
 
-(defun force-field-separator-list-into-scheme (scheme field-separator-list)
-  (if (endp scheme)
+(defun force-field-separator-list-into-template (template field-separator-list)
+  (if (endp template)
       nil
     (let
         ((car-field-separator-list
@@ -314,14 +327,46 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
           (if (or (endp field-separator-list) (endp (cdr field-separator-list)))
               nil
             (cddr field-separator-list))))
-      (cons (cons (car (car scheme)) (coerce car-field-separator-list 'string))
-            (force-field-separator-list-into-scheme
-             (cdr scheme)
+      (cons (cons (car (car template)) (coerce car-field-separator-list 'string))
+            (force-field-separator-list-into-template
+             (cdr template)
              cddr-field-separator-list
              )))
     ))
 
-(defun parse-url-by-scheme (scheme url)
-  (force-field-separator-list-into-scheme
-   scheme
-   (separate-char-list (coerce url 'list) (get-separators-from-scheme scheme) nil)))
+(defun parse-url-by-template (template url)
+  (force-field-separator-list-into-template
+   template
+   (separate-char-list (coerce url 'list) (get-separators-from-template template) nil)))
+
+(defun is-valid-http-url (url)
+  (let (
+        (parsed-url (parse-url-by-template
+                     (list
+                      (cons :scheme "://")
+                      (cons :host "/")
+                      (cons :path "?")
+                      (cons :query "#")
+                      (cons :fragment ""))
+                     url)))
+    (and
+     (consp parsed-url)
+     (consp (car parsed-url))
+     (equal (car (car parsed-url)) :scheme)
+     (or (equal (cdr (car parsed-url)) "http") (equal (cdr (car parsed-url)) "https")))))
+
+(defun is-valid-ftp-url (url)
+  (let (
+        (parsed-url (parse-url-by-template
+                     (list
+                      (cons :scheme "://")
+                      (cons :host "/")
+                      (cons :path "?")
+                      (cons :query "#")
+                      (cons :fragment ""))
+                     url)))
+    (and
+     (consp parsed-url)
+     (consp (car parsed-url))
+     (equal (car (car parsed-url)) :scheme)
+     (equal (cdr (car parsed-url)) "ftp"))))
