@@ -1,6 +1,35 @@
 (in-package "ACL2")
 
 #||
+Update: there is now a new publicly-exposed function, called
+parse-url-by-scheme. Here are two example invocations:
+
+ACL2 !>(parse-url-by-scheme  (list
+                             (cons :scheme "://")
+                             (cons :host "/")
+                             (cons :path "?")
+                             (cons :query "#")
+                             (cons :fragment "")) "http://www.utexas.edu/grades?curve=no#ok")
+((:SCHEME #\h #\t #\t #\p)
+ (:HOST #\w #\w #\w #\.
+        #\u #\t #\e #\x #\a #\s #\. #\e #\d #\u)
+ (:PATH #\g #\r #\a #\d #\e #\s)
+ (:QUERY #\c #\u #\r #\v #\e #\= #\n #\o)
+ (:FRAGMENT #\o #\k))
+ACL2 !>(parse-url-by-scheme  (list
+                             (cons :scheme "://")
+                             (cons :host "/")
+                             (cons :path "?")
+                             (cons :query "#")
+                             (cons :fragment "")) "http://www.utexas.edu/grades")
+((:SCHEME . "http")
+ (:HOST . "www.utexas.edu")
+ (:PATH . "grades")
+ (:QUERY . "")
+ (:FRAGMENT . ""))
+||#
+
+#||
 The publicly-exposed functions for this book are separate-char-list and
 unseparate-char-list-list. They serve to parse URLs based on a list of separators
 provided as an argument and pretty-print a parsed URL, respectively. They are
@@ -262,7 +291,7 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
 	    char-list)))
 
 (defun get-separators-from-scheme (scheme)
-  (if (endp scheme)
+  (if (or (endp scheme) (endp (cdr scheme)))
       nil
     (cons (coerce (cdr (car scheme)) 'list) (get-separators-from-scheme (cdr scheme)))))
 
@@ -271,7 +300,8 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
                              (cons :scheme "://")
                              (cons :host "/")
                              (cons :path "?")
-                             (cons :query "#")))
+                             (cons :query "#")
+                             (cons :fragment "")))
 ||#
 
 (defun force-field-separator-list-into-scheme (scheme field-separator-list)
@@ -284,7 +314,7 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
           (if (or (endp field-separator-list) (endp (cdr field-separator-list)))
               nil
             (cddr field-separator-list))))
-      (cons (cons (car (car scheme)) car-field-separator-list)
+      (cons (cons (car (car scheme)) (coerce car-field-separator-list 'string))
             (force-field-separator-list-into-scheme
              (cdr scheme)
              cddr-field-separator-list
