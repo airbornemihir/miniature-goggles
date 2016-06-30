@@ -91,6 +91,8 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
 (include-book "std/lists/top" :dir :system)
 
 (defun consume-separator (char-list separator)
+  (declare (xargs :guard
+                  (and (character-listp char-list) (character-listp separator))))
   (if (endp separator)
       ;; this should not happen at the first call from
       ;; consume-until-separator - that function should always call
@@ -108,6 +110,10 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
 ;; there's a difference between consuming the separator and finding
 ;; nothing afterwards, and not even finding the separator
 (defun consume-through-separator (char-list separator backwards-field)
+  (declare (xargs :guard
+                  (and (character-listp char-list)
+                       (character-listp separator)
+                       (character-listp backwards-field))))
   (if (endp char-list)
       ;;first base case
       ;;separator not found
@@ -143,9 +149,67 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
     (consp char-list)
     ))
 
-;; (in-theory (disable consume-through-separator))
+(defn character-list-listp (separators)
+    (cond
+     ((atom separators) (equal separators nil))
+     (t (and
+         (character-listp (car separators))
+         (character-list-listp (cdr separators))))))
+
+(defthm character-list-listp-implies-true-listp
+  (implies (character-list-listp x)
+           (true-listp x)))
+
+(defthm append-if-character-list-listp
+  (implies (and (character-list-listp x) (character-list-listp y))
+           (character-list-listp (append x y))))
+
+(defthm rev-if-character-list-listp
+  (implies (character-list-listp x)
+           (character-list-listp (rev x))))
+
+(defthm separate-char-list-guard-lemma-2
+  (implies
+   (and (character-listp char-list) (character-listp separator))
+   (character-listp (mv-nth 0 (consume-separator char-list separator)))))
+
+(defthm separate-char-list-guard-lemma-1
+  (implies
+   (and (character-list-listp field-separator-list)
+        (character-list-listp separator-list)
+        (character-listp char-list)
+        (character-listp backwards-field)
+        (consp separator-list)
+        (not (mv-nth 2
+                     (consume-through-separator char-list (car separator-list)
+                                                backwards-field))))
+   (character-listp
+    (mv-nth 0
+            (consume-through-separator char-list (car separator-list)
+                                       backwards-field))))
+  :hints (("Goal" :induct t) ))
+
+(defthm separate-char-list-guard-lemma-3
+  (implies
+   (and (character-list-listp field-separator-list)
+        (character-list-listp separator-list)
+        (character-listp char-list)
+        (character-listp backwards-field)
+        (consp separator-list)
+        (not (mv-nth 2
+                     (consume-through-separator char-list (car separator-list)
+                                                backwards-field))))
+   (character-listp
+    (mv-nth 1
+            (consume-through-separator char-list (car separator-list)
+                                       backwards-field))))
+  :hints (("Goal" :induct t) ))
 
 (defun separate-char-list (char-list separator-list field-separator-list)
+  (declare (xargs :guard
+                  (and (character-listp char-list)
+                       (character-list-listp separator-list)
+                       (character-list-listp field-separator-list))))
   (declare (xargs :measure (len separator-list)))
   ;;endp requires true-listp
   (if (endp separator-list)
@@ -167,6 +231,8 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
 (in-theory (enable separate-char-list))
 
 (defun unseparate-char-list-list (field-separator-list)
+  (declare (xargs :guard
+                  (character-list-listp field-separator-list)))
   (if (endp field-separator-list)
       ;;no more fields. this can happen even when there are yet
       ;;separators.
@@ -174,13 +240,6 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
     (append
      (car field-separator-list)
      (unseparate-char-list-list (cdr field-separator-list)))))
-
-(defun character-list-listp (separators)
-    (cond
-     ((atom separators) (equal separators nil))
-     (t (and
-         (character-listp (car separators))
-         (character-list-listp (cdr separators))))))
 
 (defthm consume-separator-gigo
   (implies (character-listp char-list)
@@ -303,7 +362,15 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
 	      nil))
 	    char-list)))
 
+(defn templatep (template)
+  (if (atom template)
+      (not template)
+    (and (consp (car template))
+         (stringp (cdr (car template)))
+         (templatep (cdr template)))))
+
 (defun get-separators-from-template (template)
+  (declare (xargs :guard (templatep template)))
   (if (or (endp template) (endp (cdr template)))
       nil
     (cons (coerce (cdr (car template)) 'list) (get-separators-from-template (cdr template)))))
@@ -317,7 +384,14 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
                              (cons :fragment "")))
 ||#
 
+(defthm valid-separators-from-valid-template
+ (implies
+  (templatep template)
+  (character-list-listp (get-separators-from-template template))))
+
 (defun force-field-separator-list-into-template (template field-separator-list)
+  (declare (xargs :guard (and (templatep template)
+                              (character-list-listp field-separator-list))))
   (if (endp template)
       nil
     (let
@@ -334,12 +408,27 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
              )))
     ))
 
+(defthm parse-url-by-template-guard-lemma-1
+  (implies
+   (and (character-listp char-list)
+        (character-list-listp separator-list)
+        (character-list-listp field-separator-list))
+   (character-list-listp
+    (separate-char-list char-list
+                        separator-list
+                        field-separator-list)))
+  :hints (("Goal" :induct t) ))
+
 (defun parse-url-by-template (template url)
+  (declare (xargs :guard-debug t
+                  :guard (and (templatep template)
+                              (stringp url))))
   (force-field-separator-list-into-template
    template
    (separate-char-list (coerce url 'list) (get-separators-from-template template) nil)))
 
 (defun is-valid-http-url (url)
+  (declare (xargs :guard (stringp url)))
   (let (
         (parsed-url (parse-url-by-template
                      (list
@@ -356,6 +445,7 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
      (or (equal (cdr (car parsed-url)) "http") (equal (cdr (car parsed-url)) "https")))))
 
 (defun is-valid-ftp-url (url)
+  (declare (xargs :guard (stringp url)))
   (let (
         (parsed-url (parse-url-by-template
                      (list
