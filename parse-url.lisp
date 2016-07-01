@@ -1,16 +1,29 @@
 (in-package "ACL2")
 
 #||
-Update: there is are two more publicly-exposed functions, called
-is-valid-http-url and is-valid-ftp-url. See example calls below.
+Update: We're trying to make this book more compliant with RFC 1738. We do not
+address relative URLs as specified in RFC 1808, mailto URLS from RFC2368,
+mailserver URLS from RFC 6196, Telnet URLs from RFC 6270/4248, nor Gopher
+URLs from RFC 4266 - although some of these can certainly be parsed with the
+use of an appropriate template. We now have checks - in the form of the  
+function rfc-3986-allowed-char-list-p - for compliance with the RFC 3986 list
+of allowed characters.||#
 
-ACL2 !>(is-valid-http-url "http://www.utexas.edu/grades?curve=no#ok")
+#||
+Update: We now have guards for internal validation of these functions.
+||#
+
+#||
+Update: there is are two more publicly-exposed functions, called
+valid-http-url-p and valid-ftp-url-p. See example calls below.
+
+ACL2 !>(valid-http-url-p "http://www.utexas.edu/grades?curve=no#ok")
 T
-ACL2 !>(is-valid-http-url "https://www.utexas.edu/grades?curve=no#ok")
+ACL2 !>(valid-http-url-p "https://www.utexas.edu/grades?curve=no#ok")
 T
-ACL2 !>(is-valid-http-url "ftp://www.utexas.edu/grades?curve=no#ok")
+ACL2 !>(valid-http-url-p "ftp://www.utexas.edu/grades?curve=no#ok")
 NIL
-ACL2 !>(is-valid-http-url "http:/")
+ACL2 !>(valid-http-url-p "http:/")
 NIL
 ||#
 
@@ -427,36 +440,72 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
    template
    (separate-char-list (coerce url 'list) (get-separators-from-template template) nil)))
 
-(defun is-valid-http-url (url)
-  (declare (xargs :guard (stringp url)))
-  (let (
-        (parsed-url (parse-url-by-template
-                     (list
-                      (cons :scheme "://")
-                      (cons :host "/")
-                      (cons :path "?")
-                      (cons :query "#")
-                      (cons :fragment ""))
-                     url)))
-    (and
-     (consp parsed-url)
-     (consp (car parsed-url))
-     (equal (car (car parsed-url)) :scheme)
-     (or (equal (cdr (car parsed-url)) "http") (equal (cdr (car parsed-url)) "https")))))
+;; the next few functions are for compliance with the allowed character-set
+;; from RFC 3986
+(defun gen-delim-char-p (char)
+  (declare (xargs :guard (characterp char)))
+  (member char (coerce ":/?#[]@" 'LIST))
+  )
 
-(defun is-valid-ftp-url (url)
+(defun sub-delim-char-p (char)
+  (declare (xargs :guard (characterp char)))
+  (member char (coerce "!$&'()*+,;=" 'LIST))
+  )
+
+(defun reserved-char-p (char)
+  (declare (xargs :guard (characterp char)))
+  (or (gen-delim-char-p char) (sub-delim-char-p char))
+  )
+
+(defun unreserved-char-p (char)
+  (declare (xargs :guard (characterp char)))
+  (or (member char (coerce "-._~" 'LIST))
+      (and (standard-char-p char)
+           (or (alpha-char-p char)
+               (digit-char-p char)))
+      )
+  )
+
+(defun rfc-3986-allowed-char-list-p (char-list)
+  (declare (xargs :guard (character-listp char-list)))
+  (if (atom char-list)
+      (not char-list)
+    (and (or (reserved-char-p (car char-list)) (unreserved-char-p (car char-list)))
+         (rfc-3986-allowed-char-list-p (cdr char-list)))))
+
+(defun valid-http-url-p (url)
   (declare (xargs :guard (stringp url)))
-  (let (
-        (parsed-url (parse-url-by-template
-                     (list
-                      (cons :scheme "://")
-                      (cons :host "/")
-                      (cons :path "?")
-                      (cons :query "#")
-                      (cons :fragment ""))
-                     url)))
-    (and
-     (consp parsed-url)
-     (consp (car parsed-url))
-     (equal (car (car parsed-url)) :scheme)
-     (equal (cdr (car parsed-url)) "ftp"))))
+  (and (rfc-3986-allowed-char-list-p (coerce url 'LIST))
+       (let (
+             (parsed-url (parse-url-by-template
+                          (list
+                           (cons :scheme "://")
+                           (cons :host "/")
+                           (cons :path "?")
+                           (cons :query "#")
+                           (cons :fragment ""))
+                          url)))
+         (and
+          (consp parsed-url)
+          (consp (car parsed-url))
+          (equal (car (car parsed-url)) :scheme)
+          (or (equal (cdr (car parsed-url)) "http") (equal (cdr (car parsed-url)) "https"))))))
+
+(defun valid-ftp-url-p (url)
+  (declare (xargs :guard (stringp url)))
+  (and (rfc-3986-allowed-char-list-p (coerce url 'LIST))
+       (let (
+             (parsed-url (parse-url-by-template
+                          (list
+                           (cons :scheme "://")
+                           (cons :host "/")
+                           (cons :path "?")
+                           (cons :query "#")
+                           (cons :fragment ""))
+                          url)))
+         (and
+          (consp parsed-url)
+          (consp (car parsed-url))
+          (equal (car (car parsed-url)) :scheme)
+          (equal (cdr (car parsed-url)) "ftp"))))
+  )
