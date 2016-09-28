@@ -52,12 +52,14 @@ The underlying functions for parsing are separate-char-list and
 unseparate-char-list-list. They serve to parse URLs based on a list of separators
 provided as an argument and pretty-print a parsed URL, respectively. They are
 inverses of each other in one direction, as shown by the theorem
-unseparate-separate. In the future, we plan to prove the other
-direction by designating NIL in parsed URLs to take the place of a string in
-order to indicate that the field in question was not found in the URL. We
-also hope to complete the specification of URLs, which would require a more
-powerful parsing algorithm to deal with fields such as username and password
-which may or may not appear in the middle of a URL. 
+unseparate-separate. In the future, we plan to prove an analogue of
+unseparate-separate at the level of parse-url-by-template by designating NIL
+in parsed URLs to take the place of a string in order to indicate that the
+field in question was not found in the URL. We also hope to complete the
+specification of URLs, which would require a more powerful parsing algorithm
+to deal with fields such as username and password which may or may not appear
+in the middle of a URL. 
+
 
 Here are some examples for separate-char-list and unseparate-char-list-list
 that may prove instructive.
