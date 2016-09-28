@@ -1,21 +1,17 @@
 (in-package "ACL2")
 
 #||
-Update: We're trying to make this book more compliant with RFC 1738. We do not
-address relative URLs as specified in RFC 1808, mailto URLS from RFC2368,
-mailserver URLS from RFC 6196, Telnet URLs from RFC 6270/4248, nor Gopher
-URLs from RFC 4266 - although some of these can certainly be parsed with the
-use of an appropriate template. We now have checks - in the form of the  
-function rfc-3986-allowed-char-list-p - for compliance with the RFC 3986 list
-of allowed characters.||#
+This book attempts to parse URLs in compliance with RFC 1738, although the spec
+is not as yet complete. We do not address relative URLs as specified in RFC
+1808, mailto URLS from RFC2368, mailserver URLS from RFC 6196, Telnet URLs
+from RFC 6270/4248, nor Gopher URLs from RFC 4266 - although some of these
+can certainly be parsed with the use of an appropriate template. We have
+checks - in the form of the function rfc-3986-allowed-char-list-p - for
+compliance with the RFC 3986 list of allowed characters.
 
-#||
-Update: We now have guards for internal validation of these functions.
-||#
-
-#||
-Update: there is are two more publicly-exposed functions, called
-valid-http-url-p and valid-ftp-url-p. See example calls below.
+We have two publicly-exposed functions for URL validation, called
+valid-http-url-p and valid-ftp-url-p. Here are some examples (note that all of
+these are reproduced at the end of the file as assert-event instances.)
 
 ACL2 !>(valid-http-url-p "http://www.utexas.edu/grades?curve=no#ok")
 T
@@ -25,10 +21,8 @@ ACL2 !>(valid-http-url-p "ftp://www.utexas.edu/grades?curve=no#ok")
 NIL
 ACL2 !>(valid-http-url-p "http:/")
 NIL
-||#
 
-#||
-Update: there is now a new publicly-exposed function, called
+More generally, for parsing, there is a publicly-exposed function called
 parse-url-by-template. Here are two example invocations:
 
 ACL2 !>(parse-url-by-template  (list
@@ -53,14 +47,20 @@ ACL2 !>(parse-url-by-template  (list
  (:PATH . "grades")
  (:QUERY . "")
  (:FRAGMENT . ""))
-||#
 
-#||
-The publicly-exposed functions for this book are separate-char-list and
+The underlying functions for parsing are separate-char-list and
 unseparate-char-list-list. They serve to parse URLs based on a list of separators
 provided as an argument and pretty-print a parsed URL, respectively. They are
-inverses of each other, as shown by the theorem unseparate-separate.
-Here are some examples that may prove instructive.
+inverses of each other in one direction, as shown by the theorem
+unseparate-separate. In the future, we plan to prove the other
+direction by designating NIL in parsed URLs to take the place of a string in
+order to indicate that the field in question was not found in the URL. We
+also hope to complete the specification of URLs, which would require a more
+powerful parsing algorithm to deal with fields such as username and password
+which may or may not appear in the middle of a URL. 
+
+Here are some examples for separate-char-list and unseparate-char-list-list
+that may prove instructive.
 
 Parsing a URL:
 ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
@@ -459,11 +459,10 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
 
 (defun unreserved-char-p (char)
   (declare (xargs :guard (characterp char)))
-  (or (member char (coerce "-._~" 'LIST))
-      (and (standard-char-p char)
-           (or (alpha-char-p char)
+  (and (standard-char-p char)
+           (or (member char (coerce "-._~" 'LIST))
+               (alpha-char-p char)
                (digit-char-p char)))
-      )
   )
 
 (defun rfc-3986-allowed-char-list-p (char-list)
@@ -509,3 +508,88 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
           (equal (car (car parsed-url)) :scheme)
           (equal (cdr (car parsed-url)) "ftp"))))
   )
+
+;; Some examples
+(assert-event (equal
+               (parse-url-by-template  (list
+                                        (cons :scheme "://")
+                                        (cons :host "/")
+                                        (cons :path "?")
+                                        (cons :query "#")
+                                        (cons :fragment ""))
+                                       "http://www.utexas.edu/grades")
+
+               '((:SCHEME . "http")
+                 (:HOST . "www.utexas.edu")
+                 (:PATH . "grades")
+                 (:QUERY . "")
+                 (:FRAGMENT . ""))))
+
+(assert-event (equal
+               (parse-url-by-template  (list
+                                        (cons :scheme "://")
+                                        (cons :host "/")
+                                        (cons :path "?")
+                                        (cons :query "#")
+                                        (cons :fragment ""))
+                                       "http://www.utexas.edu/grades?curve=no#ok")
+               '((:SCHEME . "http")
+                (:HOST . "www.utexas.edu")
+                (:PATH . "grades")
+                (:QUERY . "curve=no")
+                (:FRAGMENT . "ok"))))
+
+(assert-event (equal
+               (valid-http-url-p "http://www.utexas.edu/grades?curve=no#ok")
+               T))
+
+(assert-event (equal
+               (valid-http-url-p "https://www.utexas.edu/grades?curve=no#ok")
+               T))
+
+(assert-event (equal
+               (valid-http-url-p "ftp://www.utexas.edu/grades?curve=no#ok")
+               NIL))
+
+(assert-event (equal
+               (valid-http-url-p "http:/")
+               NIL))
+
+(assert-event (equal
+               (let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
+                     (separators (list (coerce "://" 'LIST) (coerce "/" 'LIST)))
+                     (field-separator-list nil))
+                 (separate-char-list
+                  char-list
+                  separators
+                  field-separator-list))
+               '((#\h #\t #\t #\p)
+                 (#\: #\/ #\/)
+                 (#\w #\w #\w #\.
+                  #\u #\t #\e #\x #\a #\s #\. #\e #\d #\u)
+                 (#\/)
+                 (#\g #\r #\a #\d #\e #\s))))
+
+(assert-event (equal
+               (let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
+                     (separators (list (coerce "://" 'LIST) (coerce "/" 'LIST)))
+                     (field-separator-list nil))
+                 (unseparate-char-list-list (separate-char-list
+                                             char-list
+                                             separators
+                                             field-separator-list)))
+               '(#\h #\t #\t #\p #\: #\/ #\/ #\w
+                 #\w #\w #\. #\u #\t #\e #\x #\a #\s #\.
+                 #\e #\d #\u #\/ #\g #\r #\a #\d #\e #\s)))
+
+(assert-event (equal
+               (let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
+                     (separators (list (coerce "://" 'LIST) (coerce "/" 'LIST)))
+                     (field-separator-list nil))
+                 (coerce (unseparate-char-list-list
+                          (separate-char-list
+                           char-list
+                           separators
+                           field-separator-list))
+                         'STRING))
+               "http://www.utexas.edu/grades"))
