@@ -270,24 +270,6 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
              (character-listp a)))
   :hints (("Goal" :in-theory (enable consume-through-separator))))
 
-#||
-(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
-      (separators (list (coerce "://" 'LIST) (coerce "/" 'LIST)))
-      (field-separator-list nil))
-  (implies (and
-            (character-listp char-list)
-            (character-list-listp separators)
-            (character-list-listp field-separator-list)
-            )
-	   (equal
-	    (unseparate-char-list-list (reverse (cons char-list field-separator-list)))
-	    (unseparate-char-list-list
-	     (separate-char-list
-              char-list
-              separators
-              field-separator-list)))))
-||#
-
 (defthm unseparate-char-list-list-append
   (equal (unseparate-char-list-list (append x y))
          (append (unseparate-char-list-list x)
@@ -316,8 +298,6 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
             (consume-through-separator char-list separator backwards-field)))
    (append (rev backwards-field) char-list))))
 
-; To eliminate this skip-proofs, I'm pretty sure you'll need to replace the
-; final argument of nil in consume-through-separator by backwards-field.
 (defthm unseparate-separate-lemma-lemma
   (implies
    (and (not (mv-nth 2
@@ -387,15 +367,6 @@ ACL2 !>(let ((char-list (coerce "http://www.utexas.edu/grades" 'LIST))
   (if (or (endp template) (endp (cdr template)))
       nil
     (cons (coerce (cdr (car template)) 'list) (get-separators-from-template (cdr template)))))
-
-#||
-(get-separators-from-template (list
-                             (cons :template "://")
-                             (cons :host "/")
-                             (cons :path "?")
-                             (cons :query "#")
-                             (cons :fragment "")))
-||#
 
 (defthm valid-separators-from-valid-template
  (implies
